@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Автобусы Израиля</title>
+</head>
+<body>
+  <h1>Автобусы Израиля онлайн</h1>
+  <button onclick="load()">Загрузить автобусы</button>
+  <pre id="out"></pre>
+
+  <script>
+    async function load() {
+      try {
+        const res = await fetch('/api/buses');
+        const data = await res.json();
+        document.getElementById('out').textContent =
+          JSON.stringify(data.slice(0, 10), null, 2);
+      } catch (e) {
+        document.getElementById('out').textContent = 'Ошибка загрузки';
+      }
+    }
+  </script>
+</body>
+</html>
