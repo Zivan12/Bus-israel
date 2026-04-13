@@ -1,19 +1,13 @@
 {
-  "name": "israel-bus-live-proxy",
+  "name": "bus-israel-map-ready",
   "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Realtime Israel bus tracker with a backend proxy for Open Bus Stride",
+  "description": "Live Israel buses map with company and route filters",
+  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "engines": {
-    "node": ">=18"
+    "start": "node server.js"
   },
   "dependencies": {
-    "compression": "^1.8.1",
-    "express": "^4.21.2",
-    "morgan": "^1.10.0"
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0"
   }
 }

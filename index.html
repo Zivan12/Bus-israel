@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Автобусы Израиля — карта онлайн</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root{
+      --bg:#09111f;
+      --card:#101b31;
+      --line:#24395e;
+      --text:#eef4ff;
+      --muted:#9fb1ce;
+      --accent:#2ed3a0;
+      --accent2:#2a8cff;
+      --danger:#ff7d7d;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,#08101d,#0d1830);
+      color:var(--text);
+    }
+    .wrap{
+      display:grid;
+      grid-template-columns:360px 1fr;
+      min-height:100vh;
+    }
+    .panel{
+      border-right:1px solid rgba(255,255,255,.08);
+      background:rgba(8,14,27,.78);
+      backdrop-filter: blur(12px);
+      padding:18px;
+    }
+    h1{
+      margin:0 0 8px;
+      font-size:34px;
+      line-height:1.05;
+    }
+    .sub{
+      color:var(--muted);
+      margin-bottom:16px;
+      font-size:15px;
+    }
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      padding:14px;
+      margin-bottom:14px;
+      box-shadow:0 10px 30px rgba(0,0,0,.2);
+    }
+    label{
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+      margin:0 0 8px;
+    }
+    input, select, button{
+      width:100%;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:#0b1730;
+      color:var(--text);
+      padding:13px 14px;
+      font-size:16px;
+      outline:none;
+    }
+    .row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .btn{
+      cursor:pointer;
+      background:linear-gradient(90deg,var(--accent2),var(--accent));
+      border:none;
+      color:white;
+      font-weight:700;
+      box-shadow:0 8px 24px rgba(42,140,255,.25);
+    }
+    .btn.secondary{
+      background:#11203f;
+      border:1px solid var(--line);
+      box-shadow:none;
+    }
+    .stats{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .pill{
+      padding:10px 12px;
+      border-radius:999px;
+      background:#0b1730;
+      border:1px solid var(--line);
+      color:var(--muted);
+      font-size:13px;
+    }
+    .msg{
+      margin-top:10px;
+      font-size:14px;
+      color:#ffd480;
+      min-height:20px;
+    }
+    .msg.error{ color:var(--danger); }
+    .list{
+      max-height:34vh;
+      overflow:auto;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .bus{
+      padding:12px;
+      border-radius:16px;
+      background:#0b1730;
+      border:1px solid var(--line);
+      cursor:pointer;
+    }
+    .bus strong{
+      display:block;
+      font-size:16px;
+      margin-bottom:4px;
+    }
+    .muted{ color:var(--muted); font-size:13px; }
+    #map{ min-height:100vh; }
+    .leaflet-popup-content-wrapper{
+      background:#0b1730;
+      color:#fff;
+      border:1px solid #29426f;
+      border-radius:14px;
+    }
+    .leaflet-popup-tip{ background:#0b1730; }
+    @media (max-width: 900px){
+      .wrap{ grid-template-columns:1fr; }
+      #map{ min-height:58vh; }
+      .panel{ border-right:none; border-bottom:1px solid rgba(255,255,255,.08); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside class="panel">
+      <h1>Автобусы Израиля</h1>
+      <div class="sub">Карта с маршрутами, компаниями, номером автобуса и направлением.</div>
+
+      <div class="card">
+        <label>Номер маршрута</label>
+        <input id="routeInput" placeholder="Например: 1, 480, 921" />
+
+        <div style="height:10px"></div>
+
+        <label>Компания</label>
+        <select id="agencySelect">
+          <option value="">Все компании</option>
+        </select>
+
+        <div style="height:10px"></div>
+
+        <label>Город / направление</label>
+        <input id="cityInput" placeholder="Например: חיפה / ירושלים / Tel Aviv" />
+
+        <div style="height:10px"></div>
+
+        <div class="row">
+          <div>
+            <label>Сколько автобусов</label>
+            <select id="limitSelect">
+              <option>50</option>
+              <option selected>100</option>
+              <option>150</option>
+              <option>300</option>
+            </select>
+          </div>
+          <div>
+            <label>Автообновление</label>
+            <select id="refreshSelect">
+              <option value="0">Выключено</option>
+              <option value="15">15 сек</option>
+              <option value="30" selected>30 сек</option>
+              <option value="60">60 сек</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="row">
+          <button class="btn" id="loadBtn">Обновить сейчас</button>
+          <button class="btn secondary" id="resetBtn">Сбросить фильтры</button>
+        </div>
+
+        <div class="stats">
+          <div class="pill" id="countPill">Автобусов: —</div>
+          <div class="pill" id="updatePill">Обновлено: —</div>
+        </div>
+
+        <div id="msg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <strong style="display:block;margin-bottom:10px;">Список автобусов</strong>
+        <div id="busList" class="list"></div>
+      </div>
+    </aside>
+
+    <main id="map"></main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { zoomControl: true }).setView([31.7683, 35.2137], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const routeInput = document.getElementById('routeInput');
+    const agencySelect = document.getElementById('agencySelect');
+    const cityInput = document.getElementById('cityInput');
+    const limitSelect = document.getElementById('limitSelect');
+    const refreshSelect = document.getElementById('refreshSelect');
+    const msg = document.getElementById('msg');
+    const countPill = document.getElementById('countPill');
+    const updatePill = document.getElementById('updatePill');
+    const busList = document.getElementById('busList');
+
+    let markers = new Map();
+    let autoTimer = null;
+
+    function safeText(v){
+      if (v === null || v === undefined) return '';
+      return String(v);
+    }
+
+    function first(...vals){
+      for(const v of vals){
+        if(v !== undefined && v !== null && v !== '') return v;
+      }
+      return '';
+    }
+
+    function extractRows(payload){
+      if(Array.isArray(payload)) return payload;
+      if(Array.isArray(payload?.results)) return payload.results;
+      if(Array.isArray(payload?.data)) return payload.data;
+      if(Array.isArray(payload?.items)) return payload.items;
+      if(Array.isArray(payload?.records)) return payload.records;
+      if(Array.isArray(payload?.objects)) return payload.objects;
+      return [];
+    }
+
+    function normalizeBus(item){
+      const lat = Number(first(
+        item.latitude, item.lat, item.vehicle_latitude, item.vehicle_lat,
+        item.location?.lat, item.location?.latitude
+      ));
+      const lon = Number(first(
+        item.longitude, item.lon, item.lng, item.vehicle_longitude, item.vehicle_lon,
+        item.location?.lon, item.location?.lng, item.location?.longitude
+      ));
+
+      const line = safeText(first(
+        item.route_short_name, item.route_shortname, item.line_number, item.line, item.route_id
+      ));
+
+      const company = safeText(first(
+        item.agency_name, item.operator_name, item.company_name, item.operator, item.agency_id
+      ));
+
+      const destination = safeText(first(
+        item.destination_name, item.destination, item.headsign, item.trip_headsign,
+        item.destination_hebrew
+      ));
+
+      const vehicleId = safeText(first(
+        item.vehicle_id, item.license_plate, item.plate, item.id
+      ));
+
+      const updated = safeText(first(
+        item.recorded_at_time, item.timestamp, item.last_update, item.updated_at
+      ));
+
+      const id = safeText(first(
+        item.vehicle_id, item.id, item.license_plate, `${line}-${lat}-${lon}`
+      ));
+
+      return { raw:item, id, lat, lon, line, company, destination, vehicleId, updated };
+    }
+
+    function setMessage(text, isError=false){
+      msg.textContent = text || '';
+      msg.className = 'msg' + (isError ? ' error' : '');
+    }
+
+    async function loadAgencies(){
+      try{
+        const res = await fetch('/api/agencies');
+        const data = await res.json();
+        const rows = extractRows(data);
+        const names = [...new Set(rows.map(r => safeText(first(r.agency_name, r.name))).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+        for(const name of names){
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          agencySelect.appendChild(opt);
+        }
+      }catch(_e){}
+    }
+
+    function popupHtml(bus){
+      return `
+        <div style="min-width:220px">
+          <div style="font-size:18px;font-weight:800;margin-bottom:6px">Маршрут ${bus.line || '—'}</div>
+          <div><b>Компания:</b> ${bus.company || '—'}</div>
+          <div><b>Автобус:</b> ${bus.vehicleId || '—'}</div>
+          <div><b>Направление:</b> ${bus.destination || '—'}</div>
+          <div><b>Обновление:</b> ${bus.updated || '—'}</div>
+        </div>
+      `;
+    }
+
+    function addOrUpdateMarker(bus){
+      if(!Number.isFinite(bus.lat) || !Number.isFinite(bus.lon)) return;
+      const existing = markers.get(bus.id);
+      if(existing){
+        existing.setLatLng([bus.lat, bus.lon]);
+        existing.setPopupContent(popupHtml(bus));
+        existing.bus = bus;
+        return;
+      }
+      const marker = L.marker([bus.lat, bus.lon]).addTo(map).bindPopup(popupHtml(bus));
+      marker.bus = bus;
+      markers.set(bus.id, marker);
+    }
+
+    function syncMarkers(buses){
+      const keep = new Set();
+      for(const bus of buses){
+        keep.add(bus.id);
+        addOrUpdateMarker(bus);
+      }
+      for(const [id, marker] of markers.entries()){
+        if(!keep.has(id)){
+          map.removeLayer(marker);
+          markers.delete(id);
+        }
+      }
+    }
+
+    function renderList(buses){
+      busList.innerHTML = '';
+      buses.slice(0, 40).forEach(bus => {
+        const div = document.createElement('div');
+        div.className = 'bus';
+        div.innerHTML = `
+          <strong>${bus.line ? 'Маршрут ' + bus.line : 'Маршрут —'}</strong>
+          <div>${bus.company || 'Компания —'}</div>
+          <div class="muted">${bus.destination || 'Без направления'}</div>
+          <div class="muted">Автобус: ${bus.vehicleId || '—'}</div>
+        `;
+        div.onclick = () => {
+          const marker = markers.get(bus.id);
+          if(marker){
+            map.setView(marker.getLatLng(), 14);
+            marker.openPopup();
+          }
+        };
+        busList.appendChild(div);
+      });
+    }
+
+    async function loadBuses(){
+      setMessage('Загружаю живые данные...');
+      const params = new URLSearchParams();
+      if(routeInput.value.trim()) params.set('route', routeInput.value.trim());
+      if(agencySelect.value) params.set('agency', agencySelect.value);
+      if(cityInput.value.trim()) params.set('city', cityInput.value.trim());
+      if(limitSelect.value) params.set('limit', limitSelect.value);
+
+      try{
+        const res = await fetch('/api/buses?' + params.toString());
+        const data = await res.json();
+        if(!res.ok) throw new Error(data?.details || data?.error || 'Ошибка запроса');
+        const rows = extractRows(data).map(normalizeBus).filter(b => Number.isFinite(b.lat) && Number.isFinite(b.lon));
+
+        syncMarkers(rows);
+        renderList(rows);
+        countPill.textContent = 'Автобусов: ' + rows.length;
+        updatePill.textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU');
+        setMessage(rows.length ? 'Данные загружены' : 'Ничего не найдено по этим фильтрам');
+      }catch(e){
+        setMessage('Ошибка загрузки: ' + e.message, true);
+      }
+    }
+
+    function restartAutoRefresh(){
+      if(autoTimer) clearInterval(autoTimer);
+      const sec = Number(refreshSelect.value || 0);
+      if(sec > 0){
+        autoTimer = setInterval(loadBuses, sec * 1000);
+      }
+    }
+
+    document.getElementById('loadBtn').onclick = loadBuses;
+    document.getElementById('resetBtn').onclick = () => {
+      routeInput.value = '';
+      agencySelect.value = '';
+      cityInput.value = '';
+      limitSelect.value = '100';
+      refreshSelect.value = '30';
+      restartAutoRefresh();
+      loadBuses();
+    };
+    refreshSelect.onchange = restartAutoRefresh;
+
+    loadAgencies();
+    loadBuses();
+    restartAutoRefresh();
+  </script>
+</body>
+</html>
