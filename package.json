@@ -1,0 +1,19 @@
+{
+  "name": "israel-bus-live-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Realtime Israel bus tracker with a backend proxy for Open Bus Stride",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "compression": "^1.8.1",
+    "express": "^4.21.2",
+    "morgan": "^1.10.0"
+  }
+}
